@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"Collectivei.GoProjects/src/domain"
@@ -12,13 +13,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestServerHttpShouldReturnErrorWhenGetAllReturnsError(t *testing.T) {
+func TestServeHttpShouldReturnsInternalServerErrorWhenGetAllReturnsError(t *testing.T) {
 	handler := makeProjectsHandler(makeProjectsServiceStub(nil, nil, errors.New("someError")))
 
-	assert.HTTPError(t, http.HandlerFunc(handler.ServeHTTP), http.MethodGet, ProjectsHandlerRoute, nil)
+	assert.HTTPStatusCode(t, handler.ServeHTTP, http.MethodGet, ProjectsHandlerRoute, nil, http.StatusInternalServerError)
 }
 
-func TestServerHttpShouldReturnsAllProjectsWhenPassedInvalidParam(t *testing.T) {
+func TestServeHttpShouldReturnsInternalServerErrorWhenFindAllReturnsError(t *testing.T) {
+	handler := makeProjectsHandler(makeProjectsServiceStub(nil, nil, errors.New("someError")))
+	values := url.Values{}
+	values.Add("name", "criteria")
+
+	assert.HTTPStatusCode(t, handler.ServeHTTP, http.MethodGet, ProjectsHandlerRoute, values, http.StatusInternalServerError)
+}
+
+func TestServeHttpShouldReturnsAllProjectsWhenPassedInvalidParam(t *testing.T) {
 	expectedUrl := "https://github.com/user/expectedProject"
 	handler := makeProjectsHandler(makeProjectsServiceStub([]domain.Project{{Url: expectedUrl}}, nil, nil))
 	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute+"?invalidParam", nil)
@@ -33,7 +42,7 @@ func TestServerHttpShouldReturnsAllProjectsWhenPassedInvalidParam(t *testing.T) 
 	assert.Equal(t, expectedUrl, actual.Projects[0].Url)
 }
 
-func TestServerHttpShouldCallFindAllWhenNameParam(t *testing.T) {
+func TestServeHttpShouldCallFindAllWhenNameParam(t *testing.T) {
 	expectedUrl := "https://github.com/user/expectedProject"
 	handler := makeProjectsHandler(makeProjectsServiceStub(nil, []domain.Project{{Url: expectedUrl}}, nil))
 	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute+"?name=someValue", nil)
@@ -48,7 +57,7 @@ func TestServerHttpShouldCallFindAllWhenNameParam(t *testing.T) {
 	assert.Equal(t, expectedUrl, actual.Projects[0].Url)
 }
 
-func TestServerHttpShouldCallGetAllWhenNoQueryParam(t *testing.T) {
+func TestServeHttpShouldCallGetAllWhenNoQueryParam(t *testing.T) {
 	expectedUrl := "https://github.com/user/expectedProject"
 	handler := makeProjectsHandler(makeProjectsServiceStub([]domain.Project{{Url: expectedUrl}}, nil, nil))
 	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute, nil)
@@ -61,6 +70,34 @@ func TestServerHttpShouldCallGetAllWhenNoQueryParam(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, expectedUrl, actual.Projects[0].Url)
+}
+
+func TestServeHttpShouldReturnEmptySliceWhenNoProjects(t *testing.T) {
+	handler := makeProjectsHandler(makeProjectsServiceStub(nil, nil, nil))
+	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute, nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	var actual domain.ProjectsResponse
+	err := json.NewDecoder(response.Body).Decode(&actual)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(actual.Projects))
+}
+
+func TestServeHttpShouldReturnEmptySliceWhenNoProjectsMatchCriteria(t *testing.T) {
+	handler := makeProjectsHandler(makeProjectsServiceStub(nil, nil, nil))
+	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute+"?name=someCriteria", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	var actual domain.ProjectsResponse
+	err := json.NewDecoder(response.Body).Decode(&actual)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(actual.Projects))
 }
 
 func makeProjectsHandler(projectsService services.ProjectsService) ProjectsHandler {

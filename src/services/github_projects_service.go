@@ -1,43 +1,74 @@
 package services
 
 import (
+	"errors"
 	"io"
 	"net/http"
+	"regexp"
 
 	"Collectivei.GoProjects/src/domain"
-	"Collectivei.GoProjects/src/github"
 )
 
 type ProjectsService interface {
 	GetAll() ([]domain.Project, error)
+	FindAll(criteria string) ([]domain.Project, error)
 }
 
 type GithubProjectsService struct {
-	sourceUrl          string
-	githubReadmeParser github.GithubReadmeProjectsUrlParser
+	sourceUrl string
 }
 
-func NewGithubProjectsService(sourceUrl string, readmeParser github.GithubReadmeProjectsUrlParser) GithubProjectsService {
-	return GithubProjectsService{sourceUrl: sourceUrl, githubReadmeParser: readmeParser}
+func NewGithubProjectsService(sourceUrl string) GithubProjectsService {
+	return GithubProjectsService{sourceUrl: sourceUrl}
 }
 
 func (projectService GithubProjectsService) GetAll() ([]domain.Project, error) {
-	resp, err := http.Get(projectService.sourceUrl)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
+	readme, err := getReadmeContent(projectService.sourceUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	urls := projectService.githubReadmeParser.ParseReadme(string(data))
 	var projects []domain.Project
-	for _, url := range urls {
-		projects = append(projects, domain.Project{Url: url})
+	regex := regexp.MustCompile(`\[.*?\]\((https://[www\.]*github\.com/[^/]*/[^/]*/*)\)`)
+	matches := regex.FindAllStringSubmatch(readme, -1)
+	for _, match := range matches {
+		projects = append(projects, domain.Project{Url: match[1]})
 	}
 
 	return projects, nil
+}
+
+func (projectService GithubProjectsService) FindAll(criteria string) ([]domain.Project, error) {
+	readme, err := getReadmeContent(projectService.sourceUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	var projects []domain.Project
+	regex := regexp.MustCompile(`\[.*?\]\((https://[www\.]*github\.com/[^/]*/[^/]*` + regexp.QuoteMeta(criteria) + `[^/]*/*)\)`)
+	matches := regex.FindAllStringSubmatch(readme, -1)
+	for _, match := range matches {
+		projects = append(projects, domain.Project{Url: match[1]})
+	}
+
+	return projects, nil
+}
+
+func getReadmeContent(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("Github unreachable")
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }

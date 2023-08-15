@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"Collectivei.GoProjects/src/domain"
 	"Collectivei.GoProjects/src/services"
 )
 
@@ -15,13 +16,24 @@ func NewProjectsHandler(projectsService services.ProjectsService) http.Handler {
 	return &ProjectsHandler{ProjectService: projectsService}
 }
 
-func (handler *ProjectsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	projects, err := handler.ProjectService.GetAll()
+func (handler *ProjectsHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	filter := request.URL.Query().Get("name")
+	var (
+		projects []domain.Project
+		err      error
+	)
+
+	if len(filter) != 0 {
+		projects, err = handler.ProjectService.FindAll(filter)
+	} else {
+		projects, err = handler.ProjectService.GetAll()
+	}
+
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(response, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"projects": projects})
+	response.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(response).Encode(map[string]interface{}{"projects": projects})
 }

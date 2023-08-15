@@ -1,0 +1,86 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"Collectivei.GoProjects/src/domain"
+	"Collectivei.GoProjects/src/services"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestServerHttpShouldReturnErrorWhenGetAllReturnsError(t *testing.T) {
+	handler := makeProjectsHandler(makeProjectsServiceStub(nil, nil, errors.New("someError")))
+
+	assert.HTTPError(t, http.HandlerFunc(handler.ServeHTTP), http.MethodGet, ProjectsHandlerRoute, nil)
+}
+
+func TestServerHttpShouldReturnsAllProjectsWhenPassedInvalidParam(t *testing.T) {
+	expectedUrl := "https://github.com/user/expectedProject"
+	handler := makeProjectsHandler(makeProjectsServiceStub([]domain.Project{{Url: expectedUrl}}, nil, nil))
+	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute+"?invalidParam", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	var actual domain.ProjectsResponse
+	err := json.NewDecoder(response.Body).Decode(&actual)
+
+	assert.Nil(t, err)
+	assert.Equal(t, expectedUrl, actual.Projects[0].Url)
+}
+
+func TestServerHttpShouldCallFindAllWhenNameParam(t *testing.T) {
+	expectedUrl := "https://github.com/user/expectedProject"
+	handler := makeProjectsHandler(makeProjectsServiceStub(nil, []domain.Project{{Url: expectedUrl}}, nil))
+	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute+"?name=someValue", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	var actual domain.ProjectsResponse
+	err := json.NewDecoder(response.Body).Decode(&actual)
+
+	assert.Nil(t, err)
+	assert.Equal(t, expectedUrl, actual.Projects[0].Url)
+}
+
+func TestServerHttpShouldCallGetAllWhenNoQueryParam(t *testing.T) {
+	expectedUrl := "https://github.com/user/expectedProject"
+	handler := makeProjectsHandler(makeProjectsServiceStub([]domain.Project{{Url: expectedUrl}}, nil, nil))
+	request := httptest.NewRequest(http.MethodGet, ProjectsHandlerRoute, nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	var actual domain.ProjectsResponse
+	err := json.NewDecoder(response.Body).Decode(&actual)
+
+	assert.Nil(t, err)
+	assert.Equal(t, expectedUrl, actual.Projects[0].Url)
+}
+
+func makeProjectsHandler(projectsService services.ProjectsService) ProjectsHandler {
+	return NewProjectsHandler(projectsService)
+}
+
+func makeProjectsServiceStub(getAllResult []domain.Project, findAllResult []domain.Project, err error) services.ProjectsService {
+	return projectsServiceStub{getAllResult: getAllResult, findAllResult: findAllResult, err: err}
+}
+
+type projectsServiceStub struct {
+	getAllResult  []domain.Project
+	findAllResult []domain.Project
+	err           error
+}
+
+func (stub projectsServiceStub) GetAll() ([]domain.Project, error) {
+	return stub.getAllResult, stub.err
+}
+
+func (stub projectsServiceStub) FindAll(criteria string) ([]domain.Project, error) {
+	return stub.findAllResult, stub.err
+}

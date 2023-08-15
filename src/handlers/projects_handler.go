@@ -8,15 +8,17 @@ import (
 	"Collectivei.GoProjects/src/services"
 )
 
+const ProjectsHandlerRoute = "/projects"
+
 type ProjectsHandler struct {
 	ProjectService services.ProjectsService
 }
 
-func NewProjectsHandler(projectsService services.ProjectsService) http.Handler {
-	return &ProjectsHandler{ProjectService: projectsService}
+func NewProjectsHandler(projectsService services.ProjectsService) ProjectsHandler {
+	return ProjectsHandler{ProjectService: projectsService}
 }
 
-func (handler *ProjectsHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+func (handler ProjectsHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	filter := request.URL.Query().Get("name")
 	var (
 		projects []domain.Project
@@ -35,5 +37,5 @@ func (handler *ProjectsHandler) ServeHTTP(response http.ResponseWriter, request 
 	}
 
 	response.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(response).Encode(map[string]interface{}{"projects": projects})
+	json.NewEncoder(response).Encode(domain.ProjectsResponse{Projects: projects})
 }

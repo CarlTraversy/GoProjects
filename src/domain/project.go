@@ -1,5 +1,5 @@
 package domain
 
 type Project struct {
-	Url string
+	Url string `json:"url"`
 }

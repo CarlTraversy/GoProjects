@@ -8,8 +8,9 @@ import (
 	"net/url"
 	"testing"
 
-	"Collectivei.GoProjects/src/domain"
-	"Collectivei.GoProjects/src/services"
+	"GoProjects/src/domain"
+	"GoProjects/src/services"
+
 	"github.com/stretchr/testify/assert"
 )
 

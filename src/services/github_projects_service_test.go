@@ -5,7 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"Collectivei.GoProjects/src/domain"
+	"GoProjects/src/domain"
+
 	"github.com/stretchr/testify/assert"
 )
 

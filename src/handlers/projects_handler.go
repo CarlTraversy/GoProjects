@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"Collectivei.GoProjects/src/domain"
-	"Collectivei.GoProjects/src/services"
+	"GoProjects/src/domain"
+	"GoProjects/src/services"
 )
 
 const ProjectsHandlerRoute = "/projects"

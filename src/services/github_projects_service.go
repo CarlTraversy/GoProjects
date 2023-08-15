@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"Collectivei.GoProjects/src/domain"
+	"GoProjects/src/domain"
 )
 
 type ProjectsService interface {

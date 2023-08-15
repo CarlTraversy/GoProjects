@@ -1,4 +1,4 @@
-module Collectivei.GoProjects
+module GoProjects
 
 go 1.21.0
 

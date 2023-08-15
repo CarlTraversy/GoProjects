@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"Collectivei.GoProjects/src/handlers"
-	"Collectivei.GoProjects/src/services"
+	"GoProjects/src/handlers"
+	"GoProjects/src/services"
 )
 
 func main() {
